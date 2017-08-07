@@ -1,10 +1,9 @@
 package sync
 
 type identity struct {
-	hasid  bool
-	haskey bool
-	id     int
-	key    string
+	hasid, haskey bool
+	id            int
+	key           string
 }
 
 func (v *identity) HasID() bool {

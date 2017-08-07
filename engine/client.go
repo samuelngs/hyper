@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/samuelngs/hyper/router"
 	"github.com/ua-parser/uap-go/uaparser"
+	"github.com/samuelngs/hyper/router"
 )
 
 // Client struct

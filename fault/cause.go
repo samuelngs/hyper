@@ -5,8 +5,10 @@ var (
 	Missing           = string("missing")
 	MissingField      = string("missing_field")
 	UnregisteredField = string("unregistered_field")
+	Illegal           = string("illegal")
 	Invalid           = string("invalid")
 	AlreadyExists     = string("already_exists")
+	Conflict          = string("conflict")
 )
 
 // Reason struct

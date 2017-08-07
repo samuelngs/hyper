@@ -4,8 +4,8 @@ import "encoding/json"
 
 // Fault struct
 type Fault struct {
-	FID      string  `json:"-"`
-	FStatus  int     `json:"-"`
+	FID      string  `json:"id"`
+	FStatus  int     `json:"status"`
 	FMessage string  `json:"message"`
 	FCauses  []Cause `json:"causes"`
 }
@@ -53,7 +53,7 @@ func (v *Fault) ErrorOrNil() error {
 }
 
 func (v *Fault) Error() string {
-	return v.FMessage
+	return v.JsonString()
 }
 
 // Json to return json bytes of the error

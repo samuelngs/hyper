@@ -1,8 +1,15 @@
 package router
 
+const (
+	defaultMaxMemory = 32 << 20 // 32 MB
+)
+
 type server struct {
-	id     string
-	routes []Route
+	id                   string
+	notfound, notallowed HandlerFunc
+	params               []Param
+	middleware           HandlerFuncs
+	routes               []Route
 }
 
 func (v *server) Start() error {
@@ -14,11 +21,26 @@ func (v *server) Stop() error {
 }
 
 func (v *server) add(pat, method string) Route {
+	var (
+		params     []Param
+		middleware HandlerFuncs
+	)
+	if l := len(v.middleware); l > 0 {
+		middleware = append(middleware, v.middleware...)
+	}
+	if l := len(v.params); l > 0 {
+		params = append(params, v.params...)
+	}
 	r := &router{
-		pat:    pat,
-		method: method,
-		ws:     true,
-		http:   true,
+		pat:        pat,
+		method:     method,
+		ws:         true,
+		http:       true,
+		memory:     defaultMaxMemory,
+		params:     params,
+		vref:       0,
+		vidx:       make(map[string]int),
+		middleware: middleware,
 	}
 	v.routes = append(v.routes, r)
 	return r
@@ -53,12 +75,55 @@ func (v *server) Delete(pat string) Route {
 }
 
 func (v *server) Namespace(pat string) Route {
+	var (
+		params     []Param
+		middleware HandlerFuncs
+	)
+	if l := len(v.middleware); l > 0 {
+		middleware = append(middleware, v.middleware...)
+	}
+	if l := len(v.params); l > 0 {
+		params = append(params, v.params...)
+	}
 	r := &router{
-		pat:       pat,
-		namespace: true,
+		pat:        pat,
+		namespace:  true,
+		memory:     defaultMaxMemory,
+		params:     params,
+		vref:       0,
+		vidx:       make(map[string]int),
+		middleware: middleware,
 	}
 	v.routes = append(v.routes, r)
 	return r
+}
+
+func (v *server) NotFound(h HandlerFunc) Service {
+	v.notfound = h
+	return v
+}
+
+func (v *server) MethodNotAllowed(h HandlerFunc) Service {
+	v.notallowed = h
+	return v
+}
+
+func (v *server) Params(p ...Param) Service {
+	v.params = append(v.params, p...)
+	return v
+}
+
+func (v *server) Middleware(h ...HandlerFunc) Service {
+	v.middleware = append(v.middleware, h...)
+	return v
+}
+
+func (v *server) RouteNotFound() HandlerFunc {
+	return v.notfound
+}
+
+func (v *server) RouteNotAllowed() HandlerFunc {
+	return v.notallowed
 }
 
 func (v *server) Routes() []Route {

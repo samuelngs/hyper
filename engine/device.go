@@ -3,8 +3,8 @@ package engine
 import (
 	"net/http"
 
-	"github.com/samuelngs/hyper/router"
 	"github.com/ua-parser/uap-go/uaparser"
+	"github.com/samuelngs/hyper/router"
 )
 
 // Device struct

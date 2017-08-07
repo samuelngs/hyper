@@ -1,6 +1,9 @@
 package router
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 type router struct {
 	pat           string
@@ -14,11 +17,34 @@ type router struct {
 	documentation string
 	summary       string
 	params        []Param
+	vref          int
+	vidx          map[string]int
+	memory        int64
 	middleware    HandlerFuncs
 	handler       HandlerFunc
 	catch         HandlerFunc
 	models        []Model
 }
+
+var tmplValueIndex = "%v#%v"
+
+var warningDependsOnSelf = `
+Parameter [%v#%v] cannot depend on itself.
+`
+
+var warningDependsOnNil = `
+Parameter [%v#%v] depends on [%v#%v], yet the parameter does not exist.
+It could also caused by invalid parameter(s) ordering. Simply put parameter
+[%v#%v] before parameter [%v#%v].
+`
+
+var warningNonNamespace = `
+"Route %s is not a namespace, you are only allowed to attach route(s) to namespaces."
+`
+
+var warningNoBodyAllowed = `
+"Route [%s] %s does not accept any request body parameter [%v]"
+`
 
 // response struct
 type model struct {
@@ -26,12 +52,55 @@ type model struct {
 	structure interface{}
 }
 
+func (v *router) buildValueIndexes(ps []Param) {
+	for _, param := range ps {
+		conf := param.Config()
+		switch conf.Type() {
+		case ParamOneOf:
+			v.buildValueIndexes(conf.OneOf())
+		default:
+			v.vidx[fmt.Sprintf(tmplValueIndex, param.Config().Type(), param.Config().Name())] = v.vref
+			v.vref++
+			if deps := conf.DependsOn(); len(deps) > 0 {
+				for _, dep := range deps {
+					depconf := dep.Config()
+					if depconf.Type() == conf.Type() && depconf.Name() == conf.Name() {
+						log.Fatalf(warningDependsOnSelf, depconf.Type(), depconf.Name())
+					}
+					if _, ok := v.vidx[fmt.Sprintf(tmplValueIndex, depconf.Type(), depconf.Name())]; !ok {
+						log.Fatalf(warningDependsOnNil, conf.Type(), conf.Name(), depconf.Type(), depconf.Name(), depconf.Type(), depconf.Name(), conf.Type(), conf.Name())
+					}
+				}
+			}
+		}
+	}
+}
+
 func (v *router) add(pat, method string) Route {
+	// pass down params
+	var params []Param
+	if l := len(v.params); l > 0 {
+		for _, param := range v.params {
+			params = append(params, param)
+		}
+	}
+	// pass down middleware
+	var middleware HandlerFuncs
+	if l := len(v.middleware); l > 0 {
+		for _, handler := range v.middleware {
+			middleware = append(middleware, handler)
+		}
+	}
 	r := &router{
-		pat:    pat,
-		method: method,
-		ws:     true,
-		http:   true,
+		pat:        pat,
+		method:     method,
+		ws:         true,
+		http:       true,
+		params:     params,
+		vref:       0,
+		vidx:       make(map[string]int),
+		memory:     v.memory,
+		middleware: middleware,
 	}
 	v.routes = append(v.routes, r)
 	return r
@@ -67,11 +136,30 @@ func (v *router) Delete(pat string) Route {
 
 func (v *router) Namespace(pat string) Route {
 	if !v.namespace {
-		log.Fatalf("Route %s is not a namespace, you are only allowed to attach route(s) to namespaces.", v.pat)
+		log.Fatalf(warningNonNamespace, v.pat)
+	}
+	// pass down params
+	var params []Param
+	if l := len(v.params); l > 0 {
+		for _, param := range v.params {
+			params = append(params, param)
+		}
+	}
+	// pass down middleware
+	var middleware HandlerFuncs
+	if l := len(v.middleware); l > 0 {
+		for _, handler := range v.middleware {
+			middleware = append(middleware, handler)
+		}
 	}
 	r := &router{
-		pat:       pat,
-		namespace: true,
+		pat:        pat,
+		namespace:  true,
+		params:     params,
+		vref:       0,
+		vidx:       make(map[string]int),
+		memory:     v.memory,
+		middleware: middleware,
 	}
 	v.routes = append(v.routes, r)
 	return r
@@ -100,17 +188,32 @@ func (v *router) Doc(s string) Route {
 }
 
 func (v *router) Params(ps ...Param) Route {
+	var params = make(map[string]int)
+	for i, param := range v.params {
+		params[fmt.Sprintf("%v#%v", param.Config().Type(), param.Config().Name())] = i
+	}
 	for _, param := range ps {
 		if param != nil {
 			switch v.method {
 			case "GET", "HEAD", "DELETE":
 				if param.Config().Type() == ParamBody {
-					log.Fatalf("Route [%s] %s does not accept any request body parameter [%v]", v.method, v.pat, param.Config().Name())
+					log.Fatalf(warningNoBodyAllowed, v.method, v.pat, param.Config().Name())
 				}
 			}
-			v.params = append(v.params, param)
+			switch i, ok := params[fmt.Sprintf("%v#%v", param.Config().Type(), param.Config().Name())]; {
+			case ok:
+				v.params[i] = param
+			default:
+				v.params = append(v.params, param)
+			}
 		}
 	}
+	v.buildValueIndexes(v.params)
+	return v
+}
+
+func (v *router) MaxMemory(m int64) Route {
+	v.memory = m
 	return v
 }
 
@@ -166,6 +269,8 @@ func (v *router) Config() RouteConfig {
 		documentation: v.documentation,
 		summary:       v.summary,
 		params:        v.params,
+		vidx:          v.vidx,
+		memory:        v.memory,
 		middleware:    v.middleware,
 		handler:       v.handler,
 		catch:         v.catch,

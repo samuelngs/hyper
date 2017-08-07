@@ -1,14 +1,21 @@
 package hyper
 
-import "github.com/samuelngs/hyper/router"
+import (
+	"log"
+
+	"github.com/samuelngs/hyper/router"
+)
 
 type param struct {
 	typ           router.ParamType
-	format        router.DataFormat
+	custom        router.CustomFunc
+	format        int
 	name          string
 	summary       string
 	documentation string
 	defaults      []byte
+	deps          []router.Param
+	oneof         []router.Param
 	require       bool
 }
 
@@ -16,7 +23,12 @@ type paramconfig struct {
 	*param
 }
 
-func (v *param) Format(f router.DataFormat) router.Param {
+func (v *param) Custom(c router.CustomFunc) router.Param {
+	v.custom = c
+	return v
+}
+
+func (v *param) Format(f int) router.Param {
 	v.format = f
 	return v
 }
@@ -41,6 +53,11 @@ func (v *param) Require(b bool) router.Param {
 	return v
 }
 
+func (v *param) DependsOn(deps ...router.Param) router.Param {
+	v.deps = deps
+	return v
+}
+
 func (v *param) Config() router.ParamConfig {
 	return &paramconfig{v}
 }
@@ -53,7 +70,11 @@ func (v *paramconfig) Type() router.ParamType {
 	return v.typ
 }
 
-func (v *paramconfig) Format() router.DataFormat {
+func (v *paramconfig) Custom() router.CustomFunc {
+	return v.custom
+}
+
+func (v *paramconfig) Format() int {
 	return v.format
 }
 
@@ -69,8 +90,16 @@ func (v *paramconfig) Default() []byte {
 	return v.defaults
 }
 
+func (v *paramconfig) OneOf() []router.Param {
+	return v.oneof
+}
+
 func (v *paramconfig) Require() bool {
 	return v.require
+}
+
+func (v *paramconfig) DependsOn() []router.Param {
+	return v.deps
 }
 
 // Query func
@@ -96,4 +125,17 @@ func Header(name string) router.Param {
 // Cookie func
 func Cookie(name string) router.Param {
 	return &param{typ: router.ParamCookie, name: name}
+}
+
+// OneOf group func
+func OneOf(ps ...router.Param) router.Param {
+	for _, param := range ps {
+		if param.Config().Require() {
+			log.Fatalf("cannot set %v field as required, [oneof] parameters do not support required checking", param.Config().Name())
+		}
+		if param.Config().Type() == router.ParamOneOf {
+			log.Fatal("cannot add oneof field within a oneof group")
+		}
+	}
+	return &param{typ: router.ParamOneOf, oneof: ps}
 }

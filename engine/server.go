@@ -5,22 +5,24 @@ import (
 
 	"github.com/pressly/chi"
 	"github.com/pressly/chi/middleware"
+	"github.com/ua-parser/uap-go/uaparser"
 	"github.com/samuelngs/hyper/cache"
 	"github.com/samuelngs/hyper/fault"
 	"github.com/samuelngs/hyper/message"
 	"github.com/samuelngs/hyper/router"
 	"github.com/samuelngs/hyper/websocket"
-	"github.com/ua-parser/uap-go/uaparser"
 
 	"golang.org/x/net/http2"
 
 	"net/http"
+	"net/textproto"
 )
 
 type server struct {
 	id        string
 	addr      string
 	protocol  Protocol
+	cors      *cors
 	cache     cache.Service
 	message   message.Service
 	router    router.Service
@@ -29,7 +31,118 @@ type server struct {
 	ln        *net.Listener
 }
 
-func (v *server) handler(conf router.RouteConfig) func(http.ResponseWriter, *http.Request) {
+func (v *server) handleParameters(c *Context, route router.RouteConfig, params []router.Param) {
+	r := c.Req()
+	for _, pa := range params {
+		conf := pa.Config()
+		data := &Value{
+			typ: conf.Type(),
+			key: conf.Name(),
+			fmt: conf.Format(),
+		}
+		switch conf.Type() {
+		case router.ParamBody:
+			if vs := r.Form[conf.Name()]; len(vs) > 0 {
+				data.val = []byte(vs[0])
+				data.has = true
+			} else if vs := r.PostForm[conf.Name()]; len(vs) > 0 {
+				data.val = []byte(vs[0])
+				data.has = true
+			}
+		case router.ParamParam:
+			data.val = []byte(chi.URLParam(r, conf.Name()))
+			data.has = true
+		case router.ParamQuery:
+			if queries := r.URL.Query(); queries != nil {
+				if vs, ok := queries[conf.Name()]; ok && len(vs) > 0 {
+					data.val = []byte(vs[0])
+					data.has = true
+				}
+			}
+		case router.ParamHeader:
+			if headers := textproto.MIMEHeader(r.Header); headers != nil {
+				if vs, ok := headers[conf.Name()]; ok && len(vs) > 0 {
+					data.val = []byte(vs[0])
+					data.has = true
+				}
+			}
+		case router.ParamCookie:
+			if cookies := r.Cookies(); cookies != nil {
+				for _, c := range cookies {
+					if c != nil && c.Name == conf.Name() {
+						data.val = []byte(c.Value)
+						data.has = true
+					}
+				}
+			}
+		case router.ParamOneOf:
+			if params := conf.OneOf(); len(params) > 0 {
+				var fields []int
+				var offset = len(c.values)
+				v.handleParameters(c, route, params)
+				for i := 0; i < len(params); i++ {
+					value := c.values[i+offset]
+					if value.Has() {
+						fields = append(fields, i)
+					}
+				}
+				if len(fields) > 1 {
+					for _, field := range fields {
+						param := params[field]
+						conf := param.Config()
+						warning := fault.
+							For(fault.Conflict).
+							SetResource(conf.Type().String()).
+							SetField(conf.Name())
+						c.warnings = append(c.warnings, warning)
+					}
+				}
+			}
+		}
+		if len(data.val) == 0 || data.val == nil {
+			if conf.Require() {
+				warning := fault.
+					For(fault.MissingField).
+					SetResource(conf.Type().String()).
+					SetField(conf.Name())
+				c.warnings = append(c.warnings, warning)
+			}
+			data.val = conf.Default()
+		}
+		if len(data.val) != 0 && data.val != nil {
+			custom := conf.Custom()
+			depson := conf.DependsOn()
+			switch parsed, ok := router.Val(conf.Format(), data.val); {
+			case ok && (custom == nil || (custom != nil && custom(data.val))):
+				data.parsed = parsed
+				if len(depson) > 0 {
+					for _, dep := range depson {
+						idx := route.ValueIndex(dep)
+						if len(c.values)-1 >= idx {
+							if val := c.values[idx]; val == nil || !val.Has() {
+								conf := dep.Config()
+								warning := fault.
+									For(fault.MissingField).
+									SetResource(conf.Type().String()).
+									SetField(conf.Name())
+								c.warnings = append(c.warnings, warning)
+							}
+						}
+					}
+				}
+			default:
+				warning := fault.
+					For(fault.Invalid).
+					SetResource(conf.Type().String()).
+					SetField(conf.Name())
+				c.warnings = append(c.warnings, warning)
+			}
+		}
+		c.values = append(c.values, data)
+	}
+}
+
+func (v *server) handlerRoute(conf router.RouteConfig) func(http.ResponseWriter, *http.Request) {
 	return func(w http.ResponseWriter, r *http.Request) {
 		client := &Client{
 			req:      r,
@@ -45,6 +158,7 @@ func (v *server) handler(conf router.RouteConfig) func(http.ResponseWriter, *htt
 			client:    client,
 			values:    make([]router.Value, 0),
 			params:    conf.Params(),
+			warnings:  make([]fault.Cause, 0),
 			cache:     v.cache,
 			message:   v.message,
 			uaparser:  v.uaparser,
@@ -62,50 +176,23 @@ func (v *server) handler(conf router.RouteConfig) func(http.ResponseWriter, *htt
 				c.recover = err
 				if catch := conf.Catch(); catch != nil {
 					catch(c)
+				} else {
+					c.Error(c.recover)
 				}
 			}
 		}()
-		var warnings []fault.Cause
-		for _, pa := range conf.Params() {
-			conf := pa.Config()
-			data := &Value{
-				typ: conf.Type(),
-				key: conf.Name(),
-			}
-			switch conf.Type() {
-			case router.ParamBody:
-				data.val = []byte(r.FormValue(conf.Name()))
-			case router.ParamParam:
-				data.val = []byte(chi.URLParam(r, conf.Name()))
-			case router.ParamQuery:
-				data.val = []byte(r.URL.Query().Get(conf.Name()))
-			case router.ParamHeader:
-				data.val = []byte(r.Header.Get(conf.Name()))
-			case router.ParamCookie:
-				if cookie, err := r.Cookie(conf.Name()); err != nil {
-					data.val = make([]byte, 0)
-				} else {
-					data.val = []byte(cookie.Value)
-				}
-			}
-			if len(data.val) == 0 || data.val == nil {
-				if conf.Require() {
-					warning := fault.
-						For(fault.MissingField).
-						SetResource(conf.Type().String()).
-						SetField(conf.Name())
-					warnings = append(warnings, warning)
-				}
-				data.val = conf.Default()
-			}
-			c.values = append(c.values, data)
+		switch r.Method {
+		case "PUT", "POST", "PATCH", "CONNECT":
+			r.ParseMultipartForm(conf.MaxMemory())
 		}
-		if len(warnings) > 0 {
+		v.handleParameters(c, conf, conf.Params())
+		if len(c.warnings) > 0 {
 			err := fault.
-				New("Validation Failed").
+				New("Unprocessable Entity").
 				SetStatus(http.StatusUnprocessableEntity).
-				AddCause(warnings...)
-			panic(err)
+				AddCause(c.warnings...)
+			c.Error(err)
+			return
 		}
 		for _, md := range conf.Middlewares() {
 			if !c.IsAborted() && md != nil {
@@ -125,45 +212,48 @@ func (v *server) buildRoutes(mux *chi.Mux, routes []router.Route) {
 			r := chi.NewRouter()
 			v.buildRoutes(r, conf.Routes())
 			mux.Mount(conf.Pattern(), r)
-		case conf.Method() == "GET":
-			mux.Get(conf.Pattern(), v.handler(conf))
 			for _, alias := range conf.Aliases() {
-				mux.Get(alias, v.handler(conf))
+				mux.Mount(alias, r)
+			}
+		case conf.Method() == "GET":
+			mux.Get(conf.Pattern(), v.handlerRoute(conf))
+			for _, alias := range conf.Aliases() {
+				mux.Get(alias, v.handlerRoute(conf))
 			}
 		case conf.Method() == "HEAD":
-			mux.Head(conf.Pattern(), v.handler(conf))
+			mux.Head(conf.Pattern(), v.handlerRoute(conf))
 			for _, alias := range conf.Aliases() {
-				mux.Head(alias, v.handler(conf))
+				mux.Head(alias, v.handlerRoute(conf))
 			}
 		case conf.Method() == "OPTIONS":
-			mux.Options(conf.Pattern(), v.handler(conf))
+			mux.Options(conf.Pattern(), v.handlerRoute(conf))
 			for _, alias := range conf.Aliases() {
-				mux.Options(alias, v.handler(conf))
+				mux.Options(alias, v.handlerRoute(conf))
 			}
 		case conf.Method() == "POST":
-			mux.Post(conf.Pattern(), v.handler(conf))
+			mux.Post(conf.Pattern(), v.handlerRoute(conf))
 			for _, alias := range conf.Aliases() {
-				mux.Post(alias, v.handler(conf))
+				mux.Post(alias, v.handlerRoute(conf))
 			}
 		case conf.Method() == "PUT":
-			mux.Put(conf.Pattern(), v.handler(conf))
+			mux.Put(conf.Pattern(), v.handlerRoute(conf))
 			for _, alias := range conf.Aliases() {
-				mux.Put(alias, v.handler(conf))
+				mux.Put(alias, v.handlerRoute(conf))
 			}
 		case conf.Method() == "PATCH":
-			mux.Patch(conf.Pattern(), v.handler(conf))
+			mux.Patch(conf.Pattern(), v.handlerRoute(conf))
 			for _, alias := range conf.Aliases() {
-				mux.Patch(alias, v.handler(conf))
+				mux.Patch(alias, v.handlerRoute(conf))
 			}
 		case conf.Method() == "DELETE":
-			mux.Delete(conf.Pattern(), v.handler(conf))
+			mux.Delete(conf.Pattern(), v.handlerRoute(conf))
 			for _, alias := range conf.Aliases() {
-				mux.Delete(alias, v.handler(conf))
+				mux.Delete(alias, v.handlerRoute(conf))
 			}
 		}
 	}
 	if v.websocket != nil {
-		mux.Get("/_s", v.handler(
+		mux.Get("/_s", v.handlerRoute(
 			v.router.Get("/_s").
 				Name("Websocket").
 				Doc(`Websocket endpoint`).
@@ -196,6 +286,10 @@ func (v *server) Start() error {
 	mux.Use(middleware.RequestID)
 	mux.Use(middleware.RealIP)
 	mux.Use(middleware.Recoverer)
+	mux.Use(middleware.DefaultCompress)
+	mux.Use(middleware.Heartbeat("/healthz"))
+	mux.Use(v.cors.Handler)
+
 	v.buildRoutes(mux, v.router.Routes())
 
 	// create http server

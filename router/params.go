@@ -3,8 +3,8 @@ package router
 // ParamType type
 type ParamType int
 
-// DataFormat type
-type DataFormat int
+// CustomFunc type
+type CustomFunc func(v []byte) bool
 
 // UnknownType type
 const (
@@ -14,21 +14,7 @@ const (
 	ParamQuery
 	ParamHeader
 	ParamCookie
-
-	UnknownData DataFormat = iota
-	String
-	Number
-	Float
-	Bool
-	Binary
-	Email
-	Phone
-	Latitude
-	Longitude
-	Date
-	Time
-	UUID
-	JSON
+	ParamOneOf
 )
 
 // String value for ParamType
@@ -44,6 +30,8 @@ func (v ParamType) String() string {
 		return "header"
 	case ParamCookie:
 		return "cookie"
+	case ParamOneOf:
+		return "oneOf"
 	}
 	return "unknown"
 }

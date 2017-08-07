@@ -5,10 +5,18 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/golang/protobuf/proto"
+	"github.com/ua-parser/uap-go/uaparser"
 	"github.com/samuelngs/hyper/fault"
+	"github.com/samuelngs/hyper/kv"
 	"github.com/samuelngs/hyper/router"
 	"github.com/samuelngs/hyper/tracer"
-	"github.com/ua-parser/uap-go/uaparser"
+)
+
+const (
+	fieldOutput = "output"
+	typeJson    = "json"
+	typeProto   = "proto"
 )
 
 type Context struct {
@@ -20,12 +28,14 @@ type Context struct {
 	client               router.Client
 	cache                router.CacheAdaptor
 	message              router.MessageAdaptor
+	kv                   router.KV
 	cookie               router.Cookie
 	header               router.Header
 	aborted              bool
 	wrote                bool
 	params               []router.Param
 	values               []router.Value
+	warnings             []fault.Cause
 	uaparser             *uaparser.Parser
 	recover              error
 }
@@ -70,6 +80,13 @@ func (v *Context) Cache() router.CacheAdaptor {
 
 func (v *Context) Message() router.MessageAdaptor {
 	return v.message
+}
+
+func (v *Context) KV() router.KV {
+	if v.kv == nil {
+		v.kv = kv.New()
+	}
+	return v.kv
 }
 
 func (v *Context) Cookie() router.Cookie {
@@ -188,6 +205,30 @@ func (v *Context) Abort() {
 
 func (v *Context) IsAborted() bool {
 	return v.aborted
+}
+
+func (v *Context) Proto(i router.ProtoMessage) router.Context {
+	var (
+		typ = typeJson
+		out []byte
+	)
+	for _, value := range v.values {
+		if value.Key() == fieldOutput {
+			switch value.String() {
+			case typeJson:
+				typ = typeJson
+			case typeProto:
+				typ = typeProto
+			}
+		}
+	}
+	switch typ {
+	case typeJson:
+		out, _ = json.Marshal(i)
+	case typeProto:
+		out, _ = proto.Marshal(i)
+	}
+	return v.Write(out)
 }
 
 func (v *Context) Write(b []byte) router.Context {

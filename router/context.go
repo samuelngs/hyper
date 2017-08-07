@@ -16,6 +16,13 @@ type HandlerFunc func(Context)
 // HandlerFuncs type
 type HandlerFuncs []HandlerFunc
 
+// Protobuf message interface
+type ProtoMessage interface {
+	Reset()
+	String() string
+	ProtoMessage()
+}
+
 // Context interface
 type Context interface {
 	Identity() Identity
@@ -27,6 +34,7 @@ type Context interface {
 	Client() Client
 	Cache() CacheAdaptor
 	Message() MessageAdaptor
+	KV() KV
 	Cookie() Cookie
 	Header() Header
 	MustParam(s string) Value
@@ -40,6 +48,7 @@ type Context interface {
 	Recover() error
 	Abort()
 	IsAborted() bool
+	Proto(ProtoMessage) Context
 	Write(b []byte) Context
 	Error(error) Context
 	Json(o interface{}) Context
@@ -68,10 +77,26 @@ type MessageAdaptor interface {
 	Listen([]byte, message.Handler) message.Close
 }
 
+// KV key value interface
+type KV interface {
+	Set(string, []byte) KV
+	Get(string) []byte
+}
+
 // Value interface
 type Value interface {
 	Key() string
 	Val() []byte
+	Has() bool
+	MustInt() int
+	MustI32() int32
+	MustI64() int64
+	MustU32() uint32
+	MustU64() uint64
+	MustF32() float32
+	MustF64() float64
+	MustBool() bool
+	MustTime() time.Time
 	String() string
 }
 
