@@ -10,13 +10,19 @@ import (
 	"github.com/samuelngs/hyper/tracer"
 )
 
+// key type
+type key string
+
+// RequestContext key
+var RequestContext = key("request-context")
+
 // HandlerFunc type
 type HandlerFunc func(Context)
 
 // HandlerFuncs type
 type HandlerFuncs []HandlerFunc
 
-// Protobuf message interface
+// ProtoMessage message interface
 type ProtoMessage interface {
 	Reset()
 	String() string
@@ -25,6 +31,10 @@ type ProtoMessage interface {
 
 // Context interface
 type Context interface {
+	Deadline() (time.Time, bool)
+	Done() <-chan struct{}
+	Err() error
+	Value(interface{}) interface{}
 	Identity() Identity
 	MachineID() string
 	ProcessID() string

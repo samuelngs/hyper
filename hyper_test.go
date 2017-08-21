@@ -3,6 +3,8 @@ package hyper
 import (
 	"testing"
 
+	"github.com/samuelngs/hyper/gql"
+	"github.com/samuelngs/hyper/gql/interfaces"
 	"github.com/samuelngs/hyper/router"
 	"github.com/samuelngs/hyper/sync"
 )
@@ -52,6 +54,51 @@ func TestNew(t *testing.T) {
 			Doc(`Authorization`).
 			Require(false),
 	)
+
+	ro.
+		Post("/graphql").
+		Params(
+			append(GQLQueries, GQLBodies...)...,
+		).
+		Handle(GraphQL(
+			gql.Schema(
+				gql.Query(
+					gql.
+						Root().
+						Fields(
+							gql.
+								Field("hello").
+								Type(gql.String).
+								Args(
+									gql.
+										Arg("input").
+										Type(gql.String).
+										Require(false),
+									gql.
+										Arg("test").
+										Require(true).
+										Type(
+											gql.
+												Object("HelloInput").
+												Args(
+													gql.
+														Arg("message").
+														Description("some message").
+														Type(gql.String),
+												),
+										),
+								).
+								Resolve(func(r interfaces.Resolver) (interface{}, error) {
+									return r.MustArg("test").In("message").String(), nil
+								}),
+						),
+				),
+			),
+		))
+
+	ro.
+		Get("/graphiql/*").
+		Handle(GraphiQL())
 
 	te := ro.Namespace("/test").
 		Alias("/test2").
@@ -116,6 +163,8 @@ func TestNew(t *testing.T) {
 			c.Write(c.MustQuery("greeting").Val())
 			c.Write(c.Header().MustGet("Authorization").Val())
 			c.Write([]byte("!"))
+			c.Write(c.MustQuery("m1").Val())
+			c.Write(c.MustQuery("m2").Val())
 			c.Write(c.KV().Get("hello"))
 		})
 

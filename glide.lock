@@ -1,15 +1,16 @@
-hash: 9aa9573b5b730a14e271c722b113fc9b233b3e8526cb9fa777c415fd18b3503e
-updated: 2017-07-23T14:10:55.072761007-06:00
+hash: d6715a738a531c286a3a324dd972a09846b573bdecefe0c1c2f6aa3d021a12c2
+updated: 2017-08-14T03:01:24.628576723-06:00
 imports:
+- name: github.com/go-chi/chi
+  version: 4d1276b86695d93c897e501a6543c5eaca9e49c4
 - name: github.com/golang/protobuf
   version: 7a211bcf3bce0e3f1d74f9894916e6f116ae83b4
   subpackages:
   - proto
-  - protoc-gen-go
 - name: github.com/gorilla/websocket
-  version: 3ab3a8b8831546bd18fd182c20687ca853b2bb13
+  version: ea4d1f681babbce9545c9c5f3d5194a789c89f5b
 - name: github.com/pressly/chi
-  version: e6033ea75479391a4bce3918fc119cad31e1cb30
+  version: 25354a53cca531cb2efd3f1d3c565d90ff04d802
   subpackages:
   - middleware
 - name: github.com/ua-parser/uap-go
@@ -28,7 +29,7 @@ imports:
   subpackages:
   - syncmap
 - name: golang.org/x/text
-  version: 836efe42bb4aa16aaa17b9c155d8813d336ed720
+  version: b19bf474d317b857955b12035d2c5acb57ce8b01
   subpackages:
   - secure/bidirule
   - transform
