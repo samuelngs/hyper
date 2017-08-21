@@ -58,7 +58,7 @@ func (v *field) ResolveParameters(params map[string]interface{}, values []interf
 		data := &value{
 			key: name,
 		}
-		switch conf.Type {
+		switch graphql.GetNullable(conf.Type) {
 		case graphql.Int:
 			data.fmt = router.Int
 		case graphql.Float:
