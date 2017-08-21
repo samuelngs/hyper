@@ -43,7 +43,11 @@ func (v *field) Type(t interface{}) interfaces.Field {
 }
 
 func (v *field) Args(args ...interfaces.Argument) interfaces.Field {
-	v.args = append(v.args, args...)
+	for _, arg := range args {
+		if arg != nil {
+			v.args = append(v.args, arg)
+		}
+	}
 	return v
 }
 

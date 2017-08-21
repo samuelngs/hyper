@@ -22,12 +22,20 @@ func (v *object) Description(s string) interfaces.Object {
 }
 
 func (v *object) Fields(fs ...interfaces.Field) interfaces.Object {
-	v.fields = append(v.fields, fs...)
+	for _, f := range fs {
+		if f != nil {
+			v.fields = append(v.fields, f)
+		}
+	}
 	return v
 }
 
 func (v *object) Args(args ...interfaces.Argument) interfaces.Object {
-	v.args = append(v.args, args...)
+	for _, arg := range args {
+		if arg != nil {
+			v.args = append(v.args, arg)
+		}
+	}
 	return v
 }
 

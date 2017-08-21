@@ -21,7 +21,11 @@ func (v *cast) Description(s string) interfaces.Type {
 }
 
 func (v *cast) Fields(fs ...interfaces.Field) interfaces.Type {
-	v.fields = append(v.fields, fs...)
+	for _, f := range fs {
+		if f != nil {
+			v.fields = append(v.fields, f)
+		}
+	}
 	return v
 }
 
