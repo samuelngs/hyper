@@ -172,6 +172,11 @@ func (v *value) MustTime() time.Time {
 	return v.parsed.(time.Time)
 }
 
+// Interface returns parsed interface object
+func (v *value) Interface() interface{} {
+	return v.parsed
+}
+
 // Has represents if input exists
 func (v *value) Has() bool {
 	return v.has

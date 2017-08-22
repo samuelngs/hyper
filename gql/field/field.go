@@ -107,6 +107,10 @@ func (v *field) ResolveParameters(params map[string]interface{}, values []interf
 					v.ResolveParameters(o, arr, args)
 					data.parsed = arr
 				}
+			default:
+				data.val = nil
+				data.has = true
+				data.parsed = o
 			}
 		}
 		if !data.has {

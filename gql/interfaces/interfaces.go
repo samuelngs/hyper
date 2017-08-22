@@ -88,6 +88,7 @@ type Value interface {
 	MustF64() float64
 	MustBool() bool
 	MustTime() time.Time
+	Interface() interface{}
 	String() string
 }
 
