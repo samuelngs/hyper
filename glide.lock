@@ -1,14 +1,27 @@
-hash: d6715a738a531c286a3a324dd972a09846b573bdecefe0c1c2f6aa3d021a12c2
-updated: 2017-08-14T03:01:24.628576723-06:00
+hash: 6bb5d2551add94400142dc02d35822c671f97b2d80005b7158aca01373b61a16
+updated: 2017-08-22T10:48:35.057559697-06:00
 imports:
 - name: github.com/go-chi/chi
-  version: 4d1276b86695d93c897e501a6543c5eaca9e49c4
+  version: df0b91fada352490a0b4be1aad4ba53875ad4a43
 - name: github.com/golang/protobuf
-  version: 7a211bcf3bce0e3f1d74f9894916e6f116ae83b4
+  version: 5a0f697c9ed9d68fef0116532c6e05cfeae00e55
   subpackages:
   - proto
 - name: github.com/gorilla/websocket
   version: ea4d1f681babbce9545c9c5f3d5194a789c89f5b
+- name: github.com/graphql-go/graphql
+  version: 105a6c24e6fdaf4008e56d947115a1a13dc46430
+  subpackages:
+  - gqlerrors
+  - language/ast
+  - language/kinds
+  - language/lexer
+  - language/location
+  - language/parser
+  - language/printer
+  - language/source
+  - language/typeInfo
+  - language/visitor
 - name: github.com/pressly/chi
   version: 25354a53cca531cb2efd3f1d3c565d90ff04d802
   subpackages:

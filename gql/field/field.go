@@ -15,6 +15,7 @@ type field struct {
 	typ                           graphql.Output
 	args                          []interfaces.Argument
 	resolve                       interfaces.ResolveHandler
+	compiled                      *graphql.Field
 }
 
 func (v *field) Name(s string) interfaces.Field {
@@ -128,34 +129,37 @@ func (v *field) ResolveParameters(params map[string]interface{}, values []interf
 }
 
 func (v *field) Compile() *graphql.Field {
-	args := graphql.FieldConfigArgument{}
-	for _, arg := range v.args {
-		k, v := arg.ToArgumentConfig()
-		args[k] = v
-	}
-	hdfn := func(params graphql.ResolveParams) (interface{}, error) {
-		c := server.FromContext(params.Context)
-		r := &resolve{
-			context: c,
-			params:  params,
-			values:  make([]interfaces.Value, len(v.args)),
+	if v.compiled == nil {
+		args := graphql.FieldConfigArgument{}
+		for _, arg := range v.args {
+			k, v := arg.ToArgumentConfig()
+			args[k] = v
 		}
-		v.ResolveParameters(params.Args, r.values, v.args)
-		o, err := v.resolve(r)
-		if err != nil {
-			r.Context().GraphQLError(err)
-			return nil, err
+		hdfn := func(params graphql.ResolveParams) (interface{}, error) {
+			c := server.FromContext(params.Context)
+			r := &resolve{
+				context: c,
+				params:  params,
+				values:  make([]interfaces.Value, len(v.args)),
+			}
+			v.ResolveParameters(params.Args, r.values, v.args)
+			o, err := v.resolve(r)
+			if err != nil {
+				r.Context().GraphQLError(err)
+				return nil, err
+			}
+			return o, nil
 		}
-		return o, nil
+		v.compiled = &graphql.Field{
+			Name:              v.name,
+			Description:       v.description,
+			DeprecationReason: v.deprecated,
+			Type:              v.typ,
+			Args:              args,
+			Resolve:           hdfn,
+		}
 	}
-	return &graphql.Field{
-		Name:              v.name,
-		Description:       v.description,
-		DeprecationReason: v.deprecated,
-		Type:              v.typ,
-		Args:              args,
-		Resolve:           hdfn,
-	}
+	return v.compiled
 }
 
 // NewField creates new field instance

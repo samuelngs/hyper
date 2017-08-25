@@ -13,6 +13,8 @@ type argument struct {
 	format            int
 	def               interface{}
 	require           bool
+	compiledArgConf   *graphql.ArgumentConfig
+	compiledObjConf   *graphql.InputObjectFieldConfig
 }
 
 func (v *argument) Name(s string) interfaces.Argument {
@@ -68,27 +70,33 @@ func (v *argument) InputObject() interfaces.Object {
 }
 
 func (v *argument) ToArgumentConfig() (string, *graphql.ArgumentConfig) {
-	var typ = v.typ
-	if v.require {
-		typ = graphql.NewNonNull(typ)
+	if v.compiledArgConf == nil {
+		var typ = v.typ
+		if v.require {
+			typ = graphql.NewNonNull(typ)
+		}
+		v.compiledArgConf = &graphql.ArgumentConfig{
+			Type:         typ,
+			DefaultValue: v.def,
+			Description:  v.description,
+		}
 	}
-	return v.name, &graphql.ArgumentConfig{
-		Type:         typ,
-		DefaultValue: v.def,
-		Description:  v.description,
-	}
+	return v.name, v.compiledArgConf
 }
 
 func (v *argument) ToInputObjectFieldConfig() (string, *graphql.InputObjectFieldConfig) {
-	var typ = v.typ
-	if v.require {
-		typ = graphql.NewNonNull(typ)
+	if v.compiledObjConf == nil {
+		var typ = v.typ
+		if v.require {
+			typ = graphql.NewNonNull(typ)
+		}
+		v.compiledObjConf = &graphql.InputObjectFieldConfig{
+			Type:         typ,
+			DefaultValue: v.def,
+			Description:  v.description,
+		}
 	}
-	return v.name, &graphql.InputObjectFieldConfig{
-		Type:         typ,
-		DefaultValue: v.def,
-		Description:  v.description,
-	}
+	return v.name, v.compiledObjConf
 }
 
 // NewArgument creates new argument instance

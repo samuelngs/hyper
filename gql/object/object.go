@@ -9,6 +9,8 @@ type object struct {
 	name, description string
 	args              []interfaces.Argument
 	fields            []interfaces.Field
+	compiledObj       *graphql.Object
+	compiledInObj     *graphql.InputObject
 }
 
 func (v *object) Name(s string) interfaces.Object {
@@ -40,30 +42,36 @@ func (v *object) Args(args ...interfaces.Argument) interfaces.Object {
 }
 
 func (v *object) ToObject() *graphql.Object {
-	fields := graphql.Fields{}
-	for _, f := range v.fields {
-		v := f.Compile()
-		fields[v.Name] = v
+	if v.compiledObj == nil {
+		fields := graphql.Fields{}
+		for _, f := range v.fields {
+			v := f.Compile()
+			fields[v.Name] = v
+		}
+		c := graphql.ObjectConfig{
+			Name:        v.name,
+			Description: v.description,
+			Fields:      fields,
+		}
+		v.compiledObj = graphql.NewObject(c)
 	}
-	c := graphql.ObjectConfig{
-		Name:        v.name,
-		Description: v.description,
-		Fields:      fields,
-	}
-	return graphql.NewObject(c)
+	return v.compiledObj
 }
 
 func (v *object) ToInputObject() *graphql.InputObject {
-	args := graphql.InputObjectConfigFieldMap{}
-	for _, arg := range v.args {
-		k, v := arg.ToInputObjectFieldConfig()
-		args[k] = v
+	if v.compiledInObj == nil {
+		args := graphql.InputObjectConfigFieldMap{}
+		for _, arg := range v.args {
+			k, v := arg.ToInputObjectFieldConfig()
+			args[k] = v
+		}
+		v.compiledInObj = graphql.NewInputObject(graphql.InputObjectConfig{
+			Name:        v.name,
+			Description: v.description,
+			Fields:      args,
+		})
 	}
-	return graphql.NewInputObject(graphql.InputObjectConfig{
-		Name:        v.name,
-		Description: v.description,
-		Fields:      args,
-	})
+	return v.compiledInObj
 }
 
 func (v *object) ExportFields() []interfaces.Field {
