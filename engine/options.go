@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/samuelngs/hyper/cache"
+	"github.com/samuelngs/hyper/dataloader"
 	"github.com/samuelngs/hyper/message"
 	"github.com/samuelngs/hyper/router"
 	"github.com/samuelngs/hyper/websocket"
@@ -30,6 +31,9 @@ type Options struct {
 
 	// Message broker
 	Message message.Service
+
+	// DataLoader
+	DataLoader dataloader.Service
 
 	// Router
 	Router router.Service
@@ -109,6 +113,11 @@ func newOptions(opts ...Option) Options {
 			message.ID(opt.ID),
 		)
 	}
+	if opt.Message == nil {
+		opt.DataLoader = dataloader.New(
+			dataloader.ID(opt.ID),
+		)
+	}
 	return opt
 }
 
@@ -144,6 +153,13 @@ func Cache(c cache.Service) Option {
 func Message(m message.Service) Option {
 	return func(o *Options) {
 		o.Message = m
+	}
+}
+
+// DataLoader server
+func DataLoader(d dataloader.Service) Option {
+	return func(o *Options) {
+		o.DataLoader = d
 	}
 }
 

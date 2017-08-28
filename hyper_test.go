@@ -1,19 +1,36 @@
 package hyper
 
 import (
+	"context"
 	"testing"
 
+	"github.com/samuelngs/hyper/dataloader"
 	"github.com/samuelngs/hyper/gql"
 	"github.com/samuelngs/hyper/gql/interfaces"
 	"github.com/samuelngs/hyper/router"
 	"github.com/samuelngs/hyper/sync"
 )
 
+type person struct {
+	id int
+}
+
 func TestNew(t *testing.T) {
+
+	var a = dataloader.BatchLoader(func(ctx context.Context, keys []string) []dataloader.Result {
+		return dataloader.ForEach(keys, func(key string) dataloader.Result {
+			return dataloader.Resolve(2)
+		})
+	})
+
+	d := dataloader.New(
+		dataloader.WithLoaders(a),
+	)
 
 	h := New(
 		Addr(":4000"),
 		HTTP2(),
+		DataLoader(d),
 	)
 
 	ws := h.Sync()
@@ -55,6 +72,32 @@ func TestNew(t *testing.T) {
 			Require(false),
 	)
 
+	ur := gql.
+		Object("User").
+		Fields(
+			gql.
+				Field("id").
+				Type(gql.Int).
+				Resolve(func(r interfaces.Resolver) (interface{}, error) {
+					if p, ok := r.Source().(*person); ok {
+						return p.id, nil
+					}
+					return nil, nil
+				}),
+		)
+
+	fi := gql.
+		Field("friend").
+		Type(ur).
+		Resolve(func(r interfaces.Resolver) (interface{}, error) {
+			if p, ok := r.Source().(*person); ok {
+				return &person{id: p.id + 1}, nil
+			}
+			return nil, nil
+		})
+
+	ur.RecursiveFields(fi)
+
 	ro.
 		Post("/graphql").
 		Params(
@@ -66,6 +109,12 @@ func TestNew(t *testing.T) {
 					gql.
 						Root().
 						Fields(
+							gql.
+								Field("user").
+								Type(ur).
+								Resolve(func(r interfaces.Resolver) (interface{}, error) {
+									return &person{id: 0}, nil
+								}),
 							gql.
 								Field("hello").
 								Type(gql.String).

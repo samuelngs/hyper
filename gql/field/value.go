@@ -172,8 +172,13 @@ func (v *value) MustTime() time.Time {
 	return v.parsed.(time.Time)
 }
 
-// Interface returns parsed interface object
-func (v *value) Interface() interface{} {
+// MustArray returns value in array format
+func (v *value) MustArray() []interface{} {
+	return v.parsed.([]interface{})
+}
+
+// Any returns value
+func (v *value) Any() interface{} {
 	return v.parsed
 }
 
