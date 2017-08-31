@@ -80,6 +80,18 @@ func List(o interface{}) graphql.Output {
 	}
 }
 
+// InputList creates a input list field
+func InputList(o interface{}) graphql.Input {
+	switch v := o.(type) {
+	case interfaces.Object:
+		return graphql.NewList(v.Config().Input())
+	case graphql.Type:
+		return graphql.NewList(v)
+	default:
+		return nil
+	}
+}
+
 // HasObject checks if object exists
 func HasObject(s string) bool {
 	_, ok := objects[s]
