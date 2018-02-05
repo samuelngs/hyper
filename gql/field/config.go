@@ -138,6 +138,11 @@ func (v *fieldconfig) Resolve(params map[string]interface{}, values []interfaces
 				data.val = nil
 				data.has = true
 				data.parsed = k
+			case nil:
+			default:
+				data.val = nil
+				data.has = true
+				data.parsed = k
 			}
 		}
 		if !data.has {
