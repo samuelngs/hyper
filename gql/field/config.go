@@ -107,6 +107,9 @@ func (v *fieldconfig) Resolve(params map[string]interface{}, values []interfaces
 		}
 		if k, ok := params[data.key]; ok {
 			switch o := k.(type) {
+			case []byte:
+				data.val = o
+				data.has = true
 			case string:
 				data.val = []byte(o)
 				data.has = true
