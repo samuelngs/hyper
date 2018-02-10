@@ -6,6 +6,7 @@ import (
 
 	"github.com/samuelngs/hyper/cache"
 	"github.com/samuelngs/hyper/dataloader"
+	"github.com/samuelngs/hyper/gws"
 	"github.com/samuelngs/hyper/message"
 	"github.com/samuelngs/hyper/router"
 	"github.com/samuelngs/hyper/websocket"
@@ -31,6 +32,9 @@ type Options struct {
 
 	// Message broker
 	Message message.Service
+
+	// GraphQL subscription server
+	GQLSubscription gws.Service
 
 	// DataLoader
 	DataLoader dataloader.Service
@@ -153,6 +157,13 @@ func Cache(c cache.Service) Option {
 func Message(m message.Service) Option {
 	return func(o *Options) {
 		o.Message = m
+	}
+}
+
+// GQLSubscription to bind graphql subscription interface to engine server
+func GQLSubscription(s gws.Service) Option {
+	return func(o *Options) {
+		o.GQLSubscription = s
 	}
 }
 

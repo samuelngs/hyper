@@ -7,6 +7,7 @@ import (
 	"github.com/samuelngs/hyper/cache"
 	"github.com/samuelngs/hyper/dataloader"
 	"github.com/samuelngs/hyper/engine"
+	"github.com/samuelngs/hyper/gws"
 	"github.com/samuelngs/hyper/message"
 	"github.com/samuelngs/hyper/router"
 	"github.com/samuelngs/hyper/sync"
@@ -29,6 +30,9 @@ type Options struct {
 
 	// sync engine
 	Sync sync.Service
+
+	// graphql subscription engine
+	GQLSubscription gws.Service
 
 	// Cache engine
 	Cache cache.Service
@@ -123,6 +127,13 @@ func newOptions(opts ...Option) Options {
 			sync.ID(opt.ID),
 			sync.Cache(opt.Cache),
 			sync.Message(opt.Message),
+		)
+	}
+	if opt.GQLSubscription == nil {
+		opt.GQLSubscription = gws.New(
+			gws.ID(opt.ID),
+			gws.Cache(opt.Cache),
+			gws.Message(opt.Message),
 		)
 	}
 	if opt.Router == nil {

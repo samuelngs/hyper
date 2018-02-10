@@ -44,6 +44,7 @@ type Context interface {
 	Client() Client
 	Cache() CacheAdaptor
 	Message() MessageAdaptor
+	GQLSubscription() GQLSubscriptionAdaptor
 	DataLoader(interface{}) DataLoaderAdaptor
 	KV() KV
 	Cookie() Cookie
@@ -76,6 +77,17 @@ type Identity interface {
 	SetKey(string)
 }
 
+// GQLEvent interface
+type GQLEvent interface {
+	Field() string
+	Payload() []byte
+	Filters() map[string]interface{}
+	EqIDs() []int64
+	NeIDs() []int64
+	EqKeys() []string
+	NeKeys() []string
+}
+
 // CacheAdaptor interface
 type CacheAdaptor interface {
 	Set(key []byte, data []byte, ttl time.Duration) error
@@ -88,13 +100,18 @@ type MessageAdaptor interface {
 	Listen([]byte, message.Handler) message.Close
 }
 
-// DataLoader interface
+// GQLSubscriptionAdaptor interface
+type GQLSubscriptionAdaptor interface {
+	Emit(GQLEvent) error
+}
+
+// DataLoaderAdaptor interface
 type DataLoaderAdaptor interface {
-	Load(context.Context, string) (interface{}, error)
-	LoadMany(context.Context, []string) ([]interface{}, []error)
-	Clear(string)
+	Load(context.Context, interface{}) (interface{}, error)
+	LoadMany(context.Context, []interface{}) ([]interface{}, []error)
+	Clear(interface{})
 	ClearAll()
-	Prime(string, interface{})
+	Prime(interface{}, interface{})
 }
 
 // KV key value interface

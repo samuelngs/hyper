@@ -10,6 +10,7 @@ import (
 	"github.com/samuelngs/hyper/gql/interfaces"
 	"github.com/samuelngs/hyper/gql/object"
 	"github.com/samuelngs/hyper/gql/schema"
+	"github.com/samuelngs/hyper/gql/union"
 )
 
 // builtin graphql scalars
@@ -68,9 +69,11 @@ func Arg(s string) interfaces.Argument {
 	return argument.New(s)
 }
 
-// List creates a list field
+// List creates a output list field
 func List(o interface{}) graphql.Output {
 	switch v := o.(type) {
+	case interfaces.Union:
+		return graphql.NewList(v.Config().Union())
 	case interfaces.Object:
 		return graphql.NewList(v.Config().Output())
 	case graphql.Type:
@@ -80,8 +83,8 @@ func List(o interface{}) graphql.Output {
 	}
 }
 
-// InputList creates a input list field
-func InputList(o interface{}) graphql.Input {
+// Multiple creates a input list field
+func Multiple(o interface{}) graphql.Input {
 	switch v := o.(type) {
 	case interfaces.Object:
 		return graphql.NewList(v.Config().Input())
@@ -90,6 +93,11 @@ func InputList(o interface{}) graphql.Input {
 	default:
 		return nil
 	}
+}
+
+// Union creates an union
+func Union(s string) interfaces.Union {
+	return union.New(s)
 }
 
 // HasObject checks if object exists

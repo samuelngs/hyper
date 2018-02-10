@@ -1,16 +1,16 @@
-hash: 6bb5d2551add94400142dc02d35822c671f97b2d80005b7158aca01373b61a16
-updated: 2017-08-22T10:48:35.057559697-06:00
+hash: 78ef0d39fe818974cbba5402c3e48898e791e66b6594decfc980da48e0cd489f
+updated: 2018-02-09T01:59:17.062078187-07:00
 imports:
 - name: github.com/go-chi/chi
-  version: df0b91fada352490a0b4be1aad4ba53875ad4a43
+  version: e223a795a06a5598451cf022558c17c779f5a7ab
 - name: github.com/golang/protobuf
-  version: 5a0f697c9ed9d68fef0116532c6e05cfeae00e55
+  version: 925541529c1fa6821df4e44ce2723319eb2be768
   subpackages:
   - proto
 - name: github.com/gorilla/websocket
   version: ea4d1f681babbce9545c9c5f3d5194a789c89f5b
 - name: github.com/graphql-go/graphql
-  version: 105a6c24e6fdaf4008e56d947115a1a13dc46430
+  version: 5e7dd4fc3e87341229fa03d8f79d2ab5455963fb
   subpackages:
   - gqlerrors
   - language/ast
@@ -23,11 +23,11 @@ imports:
   - language/typeInfo
   - language/visitor
 - name: github.com/pressly/chi
-  version: 25354a53cca531cb2efd3f1d3c565d90ff04d802
+  version: e83ac2304db3c50cf03d96a2fcd39009d458bc35
   subpackages:
   - middleware
 - name: github.com/ua-parser/uap-go
-  version: e0b1fe757c944e839263af90b3c74b76d816558e
+  version: 3ecf81168f828e6f335fa615097569a5ad3afcdd
   subpackages:
   - uaparser
 - name: golang.org/x/net
@@ -49,5 +49,5 @@ imports:
   - unicode/bidi
   - unicode/norm
 - name: gopkg.in/yaml.v2
-  version: cd8b52f8269e0feb286dfeef29f8fe4d5b397e0b
+  version: d670f9405373e636a5a2765eea47fac0c9bc91a4
 testImports: []

@@ -6,11 +6,21 @@ import (
 	"time"
 
 	"github.com/graphql-go/graphql"
+	"github.com/graphql-go/graphql/language/ast"
 	"github.com/samuelngs/hyper/router"
 )
 
 // ResolveHandler for field resolve
 type ResolveHandler func(Resolver) (interface{}, error)
+
+// ScalarSerializeHandler for scalar serialize resolver
+type ScalarSerializeHandler func(interface{}) (interface{}, error)
+
+// ScalarParseValueHandler for scalar parse value resolver
+type ScalarParseValueHandler func(interface{}) (interface{}, error)
+
+// ScalarParseLiteralHandler for scalar parse literal resolver
+type ScalarParseLiteralHandler func(ast.Value) (interface{}, error)
 
 // Schema for GraphQL
 type Schema interface {
@@ -26,6 +36,67 @@ type SchemaConfig interface {
 	Mutation() Object
 	Subscription() Object
 	Schema() graphql.Schema
+}
+
+// Union for GraphQL
+type Union interface {
+	Description(string) Union
+	Resolve(interface{}, Object) Union
+	Config() UnionConfig
+}
+
+// UnionConfig interface
+type UnionConfig interface {
+	Name() string
+	Description() string
+	Union() *graphql.Union
+}
+
+// Scalar for GraphQL
+type Scalar interface {
+	Description(string) Scalar
+	Serialize(ScalarSerializeHandler) Scalar
+	ParseValue(ScalarParseValueHandler) Scalar
+	ParseLiteral(ScalarParseLiteralHandler) Scalar
+	Config() ScalarConfig
+}
+
+// ScalarConfig interface
+type ScalarConfig interface {
+	Name() string
+	Description() string
+	Serialize(interface{}) (interface{}, error)
+	ParseValue(interface{}) (interface{}, error)
+	ParseLiteral(ast.Value) (interface{}, error)
+}
+
+// Enum for GraphQL
+type Enum interface {
+	Description() Enum
+	Values(...EnumOption) Enum
+}
+
+// EnumConfig interface
+type EnumConfig interface {
+	Name() string
+	Description() string
+	Values() []EnumOption
+}
+
+// EnumOption for GraphQL
+type EnumOption interface {
+	Description(string) EnumOption
+	Value(interface{}) EnumOption
+	Deprecation(string) EnumOption
+	Config() EnumOptionConfig
+}
+
+// EnumOptionConfig interface
+type EnumOptionConfig interface {
+	Name() string
+	Description() string
+	Value() interface{}
+	Deprecation() string
 }
 
 // Object for GraphQL
@@ -74,7 +145,7 @@ type FieldConfig interface {
 type Argument interface {
 	Description(string) Argument
 	Type(interface{}) Argument
-	Default([]byte) Argument
+	Default(interface{}) Argument
 	Require(bool) Argument
 	Config() ArgumentConfig
 }
@@ -85,7 +156,7 @@ type ArgumentConfig interface {
 	Description() string
 	Type() graphql.Input
 	Object() Object
-	Default() []byte
+	Default() interface{}
 	Require() bool
 	ArgumentConfig() *graphql.ArgumentConfig
 	InputObjectFieldConfig() *graphql.InputObjectFieldConfig
@@ -135,6 +206,7 @@ type Context interface {
 	Client() router.Client
 	Cache() router.CacheAdaptor
 	Message() router.MessageAdaptor
+	GQLSubscription() router.GQLSubscriptionAdaptor
 	DataLoader(interface{}) router.DataLoaderAdaptor
 	KV() router.KV
 	Cookie() router.Cookie

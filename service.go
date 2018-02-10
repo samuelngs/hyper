@@ -9,6 +9,7 @@ import (
 	"github.com/samuelngs/hyper/cache"
 	"github.com/samuelngs/hyper/dataloader"
 	"github.com/samuelngs/hyper/engine"
+	"github.com/samuelngs/hyper/gws"
 	"github.com/samuelngs/hyper/message"
 	"github.com/samuelngs/hyper/router"
 	"github.com/samuelngs/hyper/sync"
@@ -25,6 +26,7 @@ type Hyper struct {
 	router     router.Service
 	engine     engine.Service
 	sync       sync.Service
+	gws        gws.Service
 	websocket  websocket.Service
 }
 
@@ -44,6 +46,9 @@ func (v *Hyper) start() error {
 	if err := v.sync.Start(); err != nil {
 		return err
 	}
+	if err := v.gws.Start(); err != nil {
+		return err
+	}
 	if err := v.websocket.Start(); err != nil {
 		return err
 	}
@@ -59,6 +64,9 @@ func (v *Hyper) stop() error {
 		return err
 	}
 	if err := v.websocket.Stop(); err != nil {
+		return err
+	}
+	if err := v.gws.Stop(); err != nil {
 		return err
 	}
 	if err := v.sync.Stop(); err != nil {
@@ -99,6 +107,11 @@ func (v *Hyper) Run() error {
 // Sync returns sync service
 func (v *Hyper) Sync() sync.Service {
 	return v.sync
+}
+
+// Gws returns graphql subscription service
+func (v *Hyper) Gws() gws.Service {
+	return v.gws
 }
 
 // Router returns router service

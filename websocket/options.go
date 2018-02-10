@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/samuelngs/hyper/cache"
+	"github.com/samuelngs/hyper/gws"
 	"github.com/samuelngs/hyper/message"
 	"github.com/samuelngs/hyper/router"
 	"github.com/samuelngs/hyper/sync"
@@ -42,6 +43,9 @@ type Options struct {
 
 	// Sync engine server
 	Sync sync.Service
+
+	// GraphQL subscription server
+	GQLSubscription gws.Service
 
 	// Cache server
 	Cache cache.Service
@@ -122,6 +126,13 @@ func EnableCompression(b bool) Option {
 func Sync(s sync.Service) Option {
 	return func(o *Options) {
 		o.Sync = s
+	}
+}
+
+// GQLSubscription to bind graphql subscription interface to websocket server
+func GQLSubscription(s gws.Service) Option {
+	return func(o *Options) {
+		o.GQLSubscription = s
 	}
 }
 
