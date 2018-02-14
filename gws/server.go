@@ -182,6 +182,22 @@ subscriptions:
 				}
 			}
 		}
+		if d.Strict {
+			var fm = make(map[string]struct{})
+			if len(d.Filters) != len(args) {
+				continue subscriptions
+			}
+			for _, filter := range d.Filters {
+				if _, ok := fm[filter.GetKey()]; !ok {
+					fm[filter.GetKey()] = struct{}{}
+				}
+			}
+			for k := range args {
+				if _, ok := fm[k]; !ok {
+					continue subscriptions
+				}
+			}
+		}
 		params := graphql.Params{
 			Schema:         v.schema,
 			RequestString:  sub.Query(),
@@ -210,7 +226,7 @@ func (v *server) Handle(r router.Context, n *websocket.Conn) {
 	c := &connection{
 		machineID:     r.MachineID(),
 		processID:     r.ProcessID(),
-		identity:      new(identity),
+		identity:      r.Identity(),
 		subscriptions: &subscriptions{subs: make(map[string]Subscription, 0)},
 		ctx:           r.Context(),
 		req:           r.Req(),

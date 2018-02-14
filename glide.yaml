@@ -8,6 +8,11 @@ import:
   version: ~1.2.0
 - package: github.com/graphql-go/graphql
   version: ~0.7.4
+  subpackages:
+  - gqlerrors
+  - language/ast
+  - language/kinds
+  - language/parser
 - package: github.com/pressly/chi
   version: ~3.3.2
   subpackages:
